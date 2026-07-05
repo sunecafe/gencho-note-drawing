@@ -1,12 +1,258 @@
 <!doctype html>
 <html lang="ja">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>Gencho Note 図面モード</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Gencho Note 図面モード v0.2</title>
+  <style>
+    :root{
+      --bg:#f4f1ea; --paper:#fffaf0; --ink:#1f2937; --muted:#6b7280; --line:#374151;
+      --accent:#2563eb; --accent2:#f59e0b; --border:#d7cdbb; --danger:#dc2626; --ok:#059669;
+    }
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink);overscroll-behavior:none;}
+    header{position:sticky;top:0;z-index:20;background:rgba(244,241,234,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);padding:10px 12px 8px;}
+    .top{display:flex;gap:8px;align-items:center;justify-content:space-between;}
+    h1{font-size:18px;margin:0;font-weight:800;}
+    .site{display:flex;gap:8px;align-items:center;margin-top:8px;}
+    input,select,textarea,button{font:inherit;}
+    input,textarea{border:1px solid var(--border);border-radius:10px;padding:9px 10px;background:white;color:var(--ink);}
+    #projectName{flex:1;min-width:0;}
+    .saveStatus{font-size:12px;color:var(--muted);white-space:nowrap;}
+    .toolbar{display:flex;gap:8px;overflow-x:auto;padding:10px 12px;background:#ebe4d6;border-bottom:1px solid var(--border);position:sticky;top:75px;z-index:15;}
+    button{border:1px solid var(--border);border-radius:999px;background:white;padding:9px 12px;white-space:nowrap;color:var(--ink);font-weight:650;}
+    button.active{background:var(--accent);color:white;border-color:var(--accent);}
+    button.danger{color:var(--danger);}
+    button.primary{background:var(--accent);color:white;border-color:var(--accent);}
+    main{padding:10px 10px 18px;}
+    .hint{font-size:13px;color:var(--muted);line-height:1.45;margin:4px 4px 10px;}
+    .canvasWrap{position:relative;background:var(--paper);border:2px solid #c7b99d;border-radius:18px;overflow:hidden;box-shadow:0 8px 28px rgba(0,0,0,.08);touch-action:none;}
+    canvas{display:block;width:100%;height:68vh;min-height:520px;background-image:linear-gradient(#eee3cf 1px,transparent 1px),linear-gradient(90deg,#eee3cf 1px,transparent 1px);background-size:24px 24px;touch-action:none;}
+    .floatPanel{position:absolute;left:10px;right:10px;bottom:10px;display:flex;gap:8px;align-items:center;justify-content:space-between;pointer-events:none;}
+    .chip{background:rgba(255,255,255,.92);border:1px solid var(--border);border-radius:12px;padding:7px 9px;font-size:12px;color:var(--muted);pointer-events:auto;}
+    .roomPanel{position:fixed;left:12px;right:12px;bottom:12px;z-index:30;background:white;border:1px solid var(--border);border-radius:18px;box-shadow:0 18px 50px rgba(0,0,0,.22);padding:14px;display:none;}
+    .roomPanel.show{display:block;}
+    .panelTitle{font-weight:800;margin-bottom:8px;}
+    .roomChoices{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;}
+    .roomChoices button{padding:8px 10px;}
+    .panelRow{display:flex;gap:8px;align-items:center;margin-top:10px;}
+    .panelRow input{flex:1;}
+    .memoBox{margin-top:12px;background:white;border:1px solid var(--border);border-radius:16px;padding:12px;}
+    .memoBox h2{font-size:15px;margin:0 0 8px;}
+    textarea{width:100%;min-height:84px;resize:vertical;}
+    .small{font-size:12px;color:var(--muted);}
+    @media (max-width:560px){ canvas{height:62vh;min-height:430px;} .toolbar{top:106px;} .site{flex-wrap:wrap}.saveStatus{width:100%;} }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="top">
+      <h1>Gencho Note 図面モード v0.2</h1>
+      <span class="saveStatus" id="saveStatus">未保存</span>
+    </div>
+    <div class="site">
+      <input id="projectName" placeholder="現場名 例：〇〇様邸" />
+      <button id="exportBtn" type="button">JSON出力</button>
+    </div>
+  </header>
+
+  <nav class="toolbar" aria-label="操作モード">
+    <button id="drawMode" class="active" type="button">✏️ 図面を書く</button>
+    <button id="selectMode" type="button">👆 部屋を選ぶ/動かす</button>
+    <button id="dimMode" type="button">📏 寸法を書く</button>
+    <button id="undoBtn" type="button">戻す</button>
+    <button id="clearBtn" class="danger" type="button">全消去</button>
+  </nav>
+
+  <main>
+    <p class="hint">
+      まず全体平面図を大きく描きます。四角・五角形・L字など、線を閉じて描くと部屋候補になります。部屋候補をタップして名前を付け、指で動かせます。
+    </p>
+    <section class="canvasWrap">
+      <canvas id="planCanvas" width="1400" height="1000" aria-label="全体平面図キャンバス"></canvas>
+      <div class="floatPanel">
+        <span class="chip" id="modeChip">モード：図面を書く</span>
+        <span class="chip">自動保存ON</span>
+      </div>
+    </section>
+
+    <section class="memoBox">
+      <h2>現場メモ</h2>
+      <textarea id="memo" placeholder="現場全体の注意点、未確認事項、明日直したい点など"></textarea>
+      <p class="small">保存はこの端末のブラウザ内です。別端末には共有されません。</p>
+    </section>
+  </main>
+
+  <div class="roomPanel" id="roomPanel" role="dialog" aria-modal="true" aria-label="部屋名設定">
+    <div class="panelTitle">部屋名を設定</div>
+    <div class="small">閉じた図形を部屋・通路・収納として登録します。</div>
+    <div class="roomChoices" id="roomChoices"></div>
+    <div class="panelRow">
+      <input id="customRoomName" placeholder="自由入力 例：洋室①" />
+      <button id="applyRoomName" class="primary" type="button">決定</button>
+    </div>
+    <div class="panelRow">
+      <button id="deleteRoom" class="danger" type="button">この部屋を削除</button>
+      <button id="closePanel" type="button">閉じる</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('planCanvas');
+  const ctx = canvas.getContext('2d');
+  const projectName = document.getElementById('projectName');
+  const memo = document.getElementById('memo');
+  const saveStatus = document.getElementById('saveStatus');
+  const modeChip = document.getElementById('modeChip');
+  const panel = document.getElementById('roomPanel');
+  const choicesEl = document.getElementById('roomChoices');
+  const customRoomName = document.getElementById('customRoomName');
+  const roomNames = ['浴室','洗面所','脱衣所','トイレ','キッチン','LDK','洋室','和室','廊下','玄関','収納','CL','WIC','押入','その他'];
+
+  let state = { projectName:'', memo:'', strokes:[], rooms:[], dims:[] };
+  let mode = 'draw';
+  let drawing = false;
+  let current = [];
+  let selectedRoomId = null;
+  let drag = null;
+  let dimStart = null;
+
+  function pos(e){
+    const r = canvas.getBoundingClientRect();
+    return { x:(e.clientX-r.left)*canvas.width/r.width, y:(e.clientY-r.top)*canvas.height/r.height };
+  }
+  function dist(a,b){ return Math.hypot(a.x-b.x,a.y-b.y); }
+  function centroid(points){
+    const s = points.reduce((a,p)=>({x:a.x+p.x,y:a.y+p.y}),{x:0,y:0});
+    return {x:s.x/points.length,y:s.y/points.length};
+  }
+  function simplify(points){
+    if(points.length < 4) return points;
+    const out = [points[0]];
+    for(let i=1;i<points.length;i+=4) out.push(points[i]);
+    out.push(points[points.length-1]);
+    return out;
+  }
+  function isClosed(points){ return points.length > 18 && dist(points[0], points[points.length-1]) < 55; }
+  function pointInPoly(p, poly){
+    let inside=false;
+    for(let i=0,j=poly.length-1;i<poly.length;j=i++){
+      const xi=poly[i].x, yi=poly[i].y, xj=poly[j].x, yj=poly[j].y;
+      const intersect=((yi>p.y)!=(yj>p.y)) && (p.x < (xj-xi)*(p.y-yi)/(yj-yi)+xi);
+      if(intersect) inside=!inside;
+    }
+    return inside;
+  }
+  function findRoom(p){
+    for(let i=state.rooms.length-1;i>=0;i--) if(pointInPoly(p,state.rooms[i].points)) return state.rooms[i];
+    return null;
+  }
+  function setMode(next){
+    mode=next;
+    document.querySelectorAll('.toolbar button').forEach(b=>b.classList.remove('active'));
+    document.getElementById(next==='draw'?'drawMode':next==='select'?'selectMode':'dimMode').classList.add('active');
+    modeChip.textContent = 'モード：' + (next==='draw'?'図面を書く':next==='select'?'部屋を選ぶ/動かす':'寸法を書く');
+  }
+  function save(){
+    state.projectName = projectName.value;
+    state.memo = memo.value;
+    localStorage.setItem('gencho-note-drawing-v02', JSON.stringify(state));
+    saveStatus.textContent = '保存済み ' + new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'});
+  }
+  function load(){
+    try{ const raw=localStorage.getItem('gencho-note-drawing-v02'); if(raw) state=JSON.parse(raw); }catch(e){}
+    projectName.value=state.projectName||''; memo.value=state.memo||''; render();
+    if(localStorage.getItem('gencho-note-drawing-v02')) saveStatus.textContent='保存データ読込済み';
+  }
+  function render(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    drawGrid();
+    state.rooms.forEach(drawRoom);
+    state.strokes.forEach(s=>drawLine(s.points, s.closed?'rgba(55,65,81,.7)':'#374151', s.closed?3:4));
+    state.dims.forEach(drawDim);
+    if(current.length) drawLine(current, mode==='dim'?'#f59e0b':'#111827', mode==='dim'?3:4);
+  }
+  function drawGrid(){
+    ctx.save(); ctx.strokeStyle='#eee3cf'; ctx.lineWidth=1;
+    for(let x=0;x<canvas.width;x+=48){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke();}
+    for(let y=0;y<canvas.height;y+=48){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke();}
+    ctx.restore();
+  }
+  function drawLine(points,color,width){
+    if(points.length<2) return; ctx.save(); ctx.strokeStyle=color; ctx.lineWidth=width; ctx.lineCap='round'; ctx.lineJoin='round';
+    ctx.beginPath(); ctx.moveTo(points[0].x,points[0].y); points.slice(1).forEach(p=>ctx.lineTo(p.x,p.y)); ctx.stroke(); ctx.restore();
+  }
+  function drawRoom(room){
+    const selected = room.id===selectedRoomId;
+    ctx.save(); ctx.beginPath(); ctx.moveTo(room.points[0].x,room.points[0].y); room.points.slice(1).forEach(p=>ctx.lineTo(p.x,p.y)); ctx.closePath();
+    ctx.fillStyle = selected ? 'rgba(37,99,235,.18)' : 'rgba(5,150,105,.12)'; ctx.fill();
+    ctx.strokeStyle = selected ? '#2563eb' : '#059669'; ctx.lineWidth = selected ? 5 : 3; ctx.stroke();
+    const c=centroid(room.points); ctx.fillStyle='rgba(255,255,255,.9)'; ctx.strokeStyle='#d7cdbb';
+    const label=room.name||'未設定'; ctx.font='bold 28px -apple-system,BlinkMacSystemFont,sans-serif'; const w=ctx.measureText(label).width+28;
+    ctx.beginPath(); roundRect(ctx,c.x-w/2,c.y-24,w,48,16); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#1f2937'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(label,c.x,c.y); ctx.restore();
+  }
+  function roundRect(ctx,x,y,w,h,r){ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);}
+  function drawDim(d){
+    ctx.save(); ctx.strokeStyle='#f59e0b'; ctx.fillStyle='#92400e'; ctx.lineWidth=4; ctx.setLineDash([10,8]);
+    ctx.beginPath(); ctx.moveTo(d.a.x,d.a.y); ctx.lineTo(d.b.x,d.b.y); ctx.stroke(); ctx.setLineDash([]);
+    const m={x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2}; ctx.font='bold 24px -apple-system,BlinkMacSystemFont,sans-serif';
+    const txt=d.label; const w=ctx.measureText(txt).width+22; ctx.fillStyle='rgba(255,250,240,.95)'; ctx.strokeStyle='#f59e0b';
+    ctx.beginPath(); roundRect(ctx,m.x-w/2,m.y-22,w,44,12); ctx.fill(); ctx.stroke(); ctx.fillStyle='#92400e'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(txt,m.x,m.y); ctx.restore();
+  }
+  function openPanel(room){
+    selectedRoomId=room.id; customRoomName.value=room.name||''; choicesEl.innerHTML='';
+    roomNames.forEach(n=>{const b=document.createElement('button');b.type='button';b.textContent=n;b.addEventListener('click',()=>{customRoomName.value=n; applyName();});choicesEl.appendChild(b);});
+    panel.classList.add('show'); render();
+  }
+  function closePanel(){ panel.classList.remove('show'); selectedRoomId=null; render(); }
+  function applyName(){
+    const room=state.rooms.find(r=>r.id===selectedRoomId); if(room){room.name=customRoomName.value||'未設定'; save(); render();}
+  }
+  canvas.addEventListener('pointerdown', e=>{
+    canvas.setPointerCapture(e.pointerId); const p=pos(e);
+    if(mode==='draw') { drawing=true; current=[p]; }
+    if(mode==='select') { const room=findRoom(p); if(room){selectedRoomId=room.id; drag={roomId:room.id,last:p,moved:false};} else {selectedRoomId=null; render();} }
+    if(mode==='dim') { dimStart=p; current=[p]; }
+  });
+  canvas.addEventListener('pointermove', e=>{
+    const p=pos(e);
+    if(mode==='draw' && drawing){ current.push(p); render(); }
+    if(mode==='select' && drag){
+      const room=state.rooms.find(r=>r.id===drag.roomId); if(room){ const dx=p.x-drag.last.x, dy=p.y-drag.last.y; room.points=room.points.map(q=>({x:q.x+dx,y:q.y+dy})); drag.last=p; drag.moved=true; render(); }
+    }
+    if(mode==='dim' && dimStart){ current=[dimStart,p]; render(); }
+  });
+  canvas.addEventListener('pointerup', e=>{
+    const p=pos(e);
+    if(mode==='draw' && drawing){
+      drawing=false; const closed=isClosed(current); const pts=closed?simplify(current.slice(0,-1)):current.slice();
+      state.strokes.push({points:pts,closed});
+      if(closed){ state.rooms.push({id:Date.now().toString(36),name:'未設定',points:pts}); setTimeout(()=>openPanel(state.rooms[state.rooms.length-1]),80); }
+      current=[]; save(); render();
+    }
+    if(mode==='select' && drag){ const room=state.rooms.find(r=>r.id===drag.roomId); if(room && !drag.moved) openPanel(room); drag=null; save(); render(); }
+    if(mode==='dim' && dimStart){
+      const label=prompt('寸法を入力（例：2500、W1650、CH2200）','');
+      if(label) state.dims.push({a:dimStart,b:p,label}); dimStart=null; current=[]; save(); render();
+    }
+  });
+  document.getElementById('drawMode').addEventListener('click',()=>setMode('draw'));
+  document.getElementById('selectMode').addEventListener('click',()=>setMode('select'));
+  document.getElementById('dimMode').addEventListener('click',()=>setMode('dim'));
+  document.getElementById('undoBtn').addEventListener('click',()=>{ if(state.dims.length) state.dims.pop(); else if(state.rooms.length) state.rooms.pop(); else if(state.strokes.length) state.strokes.pop(); save(); render(); });
+  document.getElementById('clearBtn').addEventListener('click',()=>{ if(confirm('全ての図面データを消去しますか？')){state.strokes=[];state.rooms=[];state.dims=[];save();render();} });
+  document.getElementById('applyRoomName').addEventListener('click',()=>{applyName(); closePanel();});
+  document.getElementById('closePanel').addEventListener('click',closePanel);
+  document.getElementById('deleteRoom').addEventListener('click',()=>{ state.rooms=state.rooms.filter(r=>r.id!==selectedRoomId); save(); closePanel(); render(); });
+  projectName.addEventListener('input',save); memo.addEventListener('input',save);
+  document.getElementById('exportBtn').addEventListener('click',()=>{
+    save(); const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=(projectName.value||'gencho-note')+'-drawing-v02.json'; a.click(); URL.revokeObjectURL(a.href);
+  });
+  load();
+})();
+</script>
+</body>
 </html>
