@@ -3,334 +3,109 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Gencho Note 図面モード v0.4</title>
+  <title>Gencho Note 図面モード v0.5</title>
   <style>
-    :root{
-      --bg:#f4f1ea; --paper:#fffaf0; --ink:#1f2937; --muted:#6b7280; --line:#374151;
-      --accent:#2563eb; --accent2:#f59e0b; --border:#d7cdbb; --danger:#dc2626; --ok:#059669;
-    }
+    :root{--bg:#f4f1ea;--paper:#fffaf0;--ink:#1f2937;--muted:#6b7280;--border:#d7cdbb;--accent:#2563eb;--danger:#dc2626;--ok:#059669;--dim:#f59e0b;}
     *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
     body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink);overscroll-behavior:none;}
-    header{position:sticky;top:0;z-index:20;background:rgba(244,241,234,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);padding:10px 12px 8px;}
-    .top{display:flex;gap:8px;align-items:center;justify-content:space-between;}
-    h1{font-size:18px;margin:0;font-weight:800;}
-    .site{display:flex;gap:8px;align-items:center;margin-top:8px;}
-    input,select,textarea,button{font:inherit;}
-    input,textarea{border:1px solid var(--border);border-radius:10px;padding:9px 10px;background:white;color:var(--ink);}
-    #projectName{flex:1;min-width:0;}
-    .saveStatus{font-size:12px;color:var(--muted);white-space:nowrap;}
+    header{position:sticky;top:0;z-index:20;background:rgba(244,241,234,.95);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);padding:10px 12px 8px;}
+    .top{display:flex;gap:8px;align-items:center;justify-content:space-between;} h1{font-size:18px;margin:0;font-weight:800;}
+    .site{display:flex;gap:8px;align-items:center;margin-top:8px;}.site input{flex:1;min-width:0;}
+    input,select,textarea,button{font:inherit;} input,textarea,select{border:1px solid var(--border);border-radius:10px;padding:9px 10px;background:white;color:var(--ink);} button{border:1px solid var(--border);border-radius:999px;background:white;padding:9px 12px;white-space:nowrap;color:var(--ink);font-weight:650;} button.active{background:var(--accent);color:white;border-color:var(--accent);} button.danger{color:var(--danger);} button.primary{background:var(--accent);color:white;border-color:var(--accent);} .saveStatus{font-size:12px;color:var(--muted);white-space:nowrap;}
+    .floorTabs{display:flex;gap:8px;overflow-x:auto;margin-top:8px;padding-bottom:2px;}.floorTabs button{padding:7px 12px;font-size:13px;}
     .toolbar{display:flex;gap:8px;overflow-x:auto;padding:10px 12px;background:#ebe4d6;border-bottom:1px solid var(--border);position:sticky;top:112px;z-index:15;}
-    .floorTabs{display:flex;gap:8px;overflow-x:auto;margin-top:8px;padding-bottom:2px;}
-    .floorTabs button{padding:7px 12px;font-size:13px;}
-    button{border:1px solid var(--border);border-radius:999px;background:white;padding:9px 12px;white-space:nowrap;color:var(--ink);font-weight:650;}
-    button.active{background:var(--accent);color:white;border-color:var(--accent);}
-    button.danger{color:var(--danger);}
-    button.primary{background:var(--accent);color:white;border-color:var(--accent);}
-    main{padding:10px 10px 18px;}
-    .hint{font-size:13px;color:var(--muted);line-height:1.45;margin:4px 4px 10px;}
+    main{padding:10px 10px 18px;}.hint{font-size:13px;color:var(--muted);line-height:1.45;margin:4px 4px 10px;}
     .canvasWrap{position:relative;background:var(--paper);border:2px solid #c7b99d;border-radius:18px;overflow:hidden;box-shadow:0 8px 28px rgba(0,0,0,.08);touch-action:none;}
-    canvas{display:block;width:100%;height:68vh;min-height:520px;background-image:linear-gradient(#eee3cf 1px,transparent 1px),linear-gradient(90deg,#eee3cf 1px,transparent 1px);background-size:24px 24px;touch-action:none;}
-    .floatPanel{position:absolute;left:10px;right:10px;bottom:10px;display:flex;gap:8px;align-items:center;justify-content:space-between;pointer-events:none;}
-    .chip{background:rgba(255,255,255,.92);border:1px solid var(--border);border-radius:12px;padding:7px 9px;font-size:12px;color:var(--muted);pointer-events:auto;}
-    .roomPanel{position:fixed;left:12px;right:12px;bottom:12px;z-index:30;background:white;border:1px solid var(--border);border-radius:18px;box-shadow:0 18px 50px rgba(0,0,0,.22);padding:14px;display:none;}
-    .roomPanel.show{display:block;}
-    .panelTitle{font-weight:800;margin-bottom:8px;}
-    .roomChoices{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;}
-    .roomChoices button{padding:8px 10px;}
-    .panelRow{display:flex;gap:8px;align-items:center;margin-top:10px;}
-    .panelRow input{flex:1;}
-    .memoBox{margin-top:12px;background:white;border:1px solid var(--border);border-radius:16px;padding:12px;}
-    .memoBox h2{font-size:15px;margin:0 0 8px;}
-    textarea{width:100%;min-height:84px;resize:vertical;}
-    .small{font-size:12px;color:var(--muted);}
-    @media print{ header,.toolbar,.memoBox .small,button{display:none!important;} body{background:white;} main{padding:0;} .canvasWrap{border:1px solid #999;box-shadow:none;border-radius:0;} canvas{height:auto;min-height:0;background:white;} .memoBox{page-break-inside:avoid;border:1px solid #999;} }
-    @media (max-width:560px){ canvas{height:62vh;min-height:430px;} .toolbar{top:148px;} .site{flex-wrap:wrap}.saveStatus{width:100%;} }
+    canvas{display:block;width:100%;height:auto;aspect-ratio:7/5;background-color:var(--paper);background-image:linear-gradient(#eee3cf 1px,transparent 1px),linear-gradient(90deg,#eee3cf 1px,transparent 1px);background-size:24px 24px;touch-action:none;}
+    .floatPanel{position:absolute;left:10px;right:10px;bottom:10px;display:flex;gap:8px;align-items:center;justify-content:space-between;pointer-events:none;flex-wrap:wrap;}.chip{background:rgba(255,255,255,.92);border:1px solid var(--border);border-radius:12px;padding:7px 9px;font-size:12px;color:var(--muted);pointer-events:auto;}
+    .roomPanel{position:fixed;left:12px;right:12px;bottom:12px;z-index:30;background:white;border:1px solid var(--border);border-radius:18px;box-shadow:0 18px 50px rgba(0,0,0,.22);padding:14px;display:none;}.roomPanel.show{display:block;}.panelTitle{font-weight:800;margin-bottom:8px;}.roomChoices{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;}.roomChoices button{padding:8px 10px;}.panelRow{display:flex;gap:8px;align-items:center;margin-top:10px;}.panelRow input,.panelRow select{flex:1;}
+    .memoBox{margin-top:12px;background:white;border:1px solid var(--border);border-radius:16px;padding:12px;}.memoBox h2{font-size:15px;margin:0 0 8px;} textarea{width:100%;min-height:84px;resize:vertical;}.small{font-size:12px;color:var(--muted);} .modeHelp{margin-top:8px;font-size:12px;color:var(--muted);}
+    @media print{header,.toolbar,.memoBox .small,button{display:none!important;}body{background:white;}main{padding:0}.canvasWrap{border:1px solid #999;box-shadow:none;border-radius:0}canvas{background:white}.memoBox{page-break-inside:avoid;border:1px solid #999}}
+    @media (max-width:560px){.toolbar{top:148px}.site{flex-wrap:wrap}.saveStatus{width:100%;} button{padding:8px 10px;font-size:13px;}}
   </style>
 </head>
 <body>
-  <header>
-    <div class="top">
-      <h1>Gencho Note 図面モード v0.4</h1>
-      <span class="saveStatus" id="saveStatus">未保存</span>
-    </div>
-    <div class="site">
-      <input id="projectName" placeholder="現場名 例：〇〇様邸" />
-      <button id="pdfBtn" type="button">PDF出力</button>
-      <button id="exportBtn" type="button">バックアップ</button>
-    </div>
-    <div class="floorTabs" id="floorTabs"></div>
-  </header>
-
-  <nav class="toolbar" aria-label="操作モード">
-    <button id="drawMode" class="active" type="button">✏️ 図面を書く</button>
-    <button id="selectMode" type="button">👆 部屋を選ぶ/動かす</button>
-    <button id="dimMode" type="button">📏 寸法を書く</button>
-    <button id="toggleCorrection" type="button">補正ON</button>
-    <button id="addFloorBtn" type="button">＋階追加</button>
-    <button id="undoBtn" type="button">戻す</button>
-    <button id="clearBtn" class="danger" type="button">全消去</button>
-  </nav>
-
-  <main>
-    <p class="hint">
-      まず全体平面図を大きく描きます。Apple Pencilで閉じた形を描くと部屋候補になります。指では部屋を選択・移動します。近づけるとマグネット吸着します。
-    </p>
-    <section class="canvasWrap">
-      <canvas id="planCanvas" width="1400" height="1000" aria-label="全体平面図キャンバス"></canvas>
-      <div class="floatPanel">
-        <span class="chip" id="modeChip">モード：図面を書く</span>
-        <span class="chip">自動保存ON</span>
-        <span class="chip" id="floorChip">1F</span>
-        <span class="chip" id="penChip">描画：Apple Pencilのみ</span>
-      </div>
-    </section>
-
-    <section class="memoBox">
-      <h2>現場メモ</h2>
-      <textarea id="memo" placeholder="現場全体の注意点、未確認事項、明日直したい点など"></textarea>
-      <p class="small">保存はこの端末のブラウザ内です。別端末には共有されません。</p>
-    </section>
-  </main>
-
-  <div class="roomPanel" id="roomPanel" role="dialog" aria-modal="true" aria-label="部屋名設定">
-    <div class="panelTitle">部屋名を設定</div>
-    <div class="small">閉じた図形を部屋・通路・収納として登録します。</div>
-    <div class="roomChoices" id="roomChoices"></div>
-    <div class="panelRow">
-      <input id="customRoomName" placeholder="自由入力 例：洋室①" />
-      <button id="applyRoomName" class="primary" type="button">決定</button>
-    </div>
-    <div class="panelRow">
-      <button id="deleteRoom" class="danger" type="button">この部屋を削除</button>
-      <button id="closePanel" type="button">閉じる</button>
-    </div>
-  </div>
-
+<header>
+  <div class="top"><h1>Gencho Note 図面モード v0.5</h1><span class="saveStatus" id="saveStatus">未保存</span></div>
+  <div class="site"><input id="projectName" placeholder="現場名 例：〇〇様邸" /><button id="pdfBtn" type="button">PDF出力</button><button id="exportBtn" type="button">バックアップ</button></div>
+  <div class="floorTabs" id="floorTabs"></div>
+</header>
+<nav class="toolbar" aria-label="操作モード">
+  <button id="drawMode" class="active" type="button">✏️ 図面</button>
+  <button id="selectMode" type="button">👆 移動/名前</button>
+  <button id="dimMode" type="button">📏 寸法線</button>
+  <button id="openingMode" type="button">🚪 開口部</button>
+  <button id="fixtureMode" type="button">🚰 設備</button>
+  <button id="eraseMode" type="button">🧽 消しゴム</button>
+  <button id="toggleCorrection" type="button">補正ON</button>
+  <button id="addFloorBtn" type="button">＋ページ</button>
+  <button id="undoBtn" type="button">戻る</button>
+  <button id="redoBtn" type="button">進む</button>
+  <button id="clearBtn" class="danger" type="button">全消去</button>
+</nav>
+<main>
+  <p class="hint">縦横画面で形が崩れないよう、キャンバス比率を固定しました。Apple Pencilで描き、指で部屋を動かします。部屋名は後からタップして設定します。</p>
+  <section class="canvasWrap"><canvas id="planCanvas" width="1400" height="1000" aria-label="全体平面図キャンバス"></canvas><div class="floatPanel"><span class="chip" id="modeChip">モード：図面</span><span class="chip" id="toolChip">開口：ドア / 設備：キッチン</span><span class="chip" id="floorChip">1F</span><span class="chip">自動保存ON</span></div></section>
+  <section class="memoBox"><h2>現場メモ</h2><textarea id="memo" placeholder="現場全体の注意点、未確認事項など"></textarea><p class="small">保存はこの端末のブラウザ内です。PDFは提出・共有用、バックアップは復元やAI連携用です。</p></section>
+</main>
+<div class="roomPanel" id="roomPanel" role="dialog" aria-modal="true" aria-label="設定">
+  <div class="panelTitle" id="panelTitle">設定</div><div class="small" id="panelHelp">選択した部屋・設備の名前を設定します。</div>
+  <div class="roomChoices" id="roomChoices"></div>
+  <div class="panelRow"><input id="customName" placeholder="自由入力" /><button id="applyName" class="primary" type="button">決定</button></div>
+  <div class="panelRow"><button id="deleteItem" class="danger" type="button">削除</button><button id="closePanel" type="button">閉じる</button></div>
+  <div class="modeHelp">部屋名は薄く表示します。設備や開口部は後から追加できます。</div>
+</div>
 <script>
-(() => {
-  const canvas = document.getElementById('planCanvas');
-  const ctx = canvas.getContext('2d');
-  const projectName = document.getElementById('projectName');
-  const memo = document.getElementById('memo');
-  const saveStatus = document.getElementById('saveStatus');
-  const modeChip = document.getElementById('modeChip');
-  const panel = document.getElementById('roomPanel');
-  const choicesEl = document.getElementById('roomChoices');
-  const customRoomName = document.getElementById('customRoomName');
-  const roomNames = ['浴室','洗面所','脱衣所','トイレ','キッチン','LDK','洋室','和室','廊下','玄関','収納','CL','WIC','押入','その他'];
-
-  let state = { projectName:'', memo:'', correction:true, activeFloor:'1F', floors:{ '1F':{strokes:[], rooms:[], dims:[]}, '2F':{strokes:[], rooms:[], dims:[]} } };
-  function floor(){ if(!state.floors) state.floors={'1F':{strokes:state.strokes||[],rooms:state.rooms||[],dims:state.dims||[]}}; if(!state.activeFloor) state.activeFloor='1F'; if(!state.floors[state.activeFloor]) state.floors[state.activeFloor]={strokes:[],rooms:[],dims:[]}; return state.floors[state.activeFloor]; }
-  function syncLegacy(){ if(!state.floors){ state.floors={'1F':{strokes:state.strokes||[],rooms:state.rooms||[],dims:state.dims||[]}, '2F':{strokes:[],rooms:[],dims:[]}}; state.activeFloor='1F'; } }
-  function setStrokePoints(strokeId, points){ const s=floor().strokes.find(x=>x.id===strokeId); if(s) s.points=points.map(p=>({...p})); }
-  function moveRoom(room, dx, dy){ room.points=room.points.map(q=>({x:q.x+dx,y:q.y+dy})); if(room.strokeId) setStrokePoints(room.strokeId, room.points); }
-  function bbox(points){ return {minX:Math.min(...points.map(p=>p.x)), maxX:Math.max(...points.map(p=>p.x)), minY:Math.min(...points.map(p=>p.y)), maxY:Math.max(...points.map(p=>p.y))}; }
-  let lastWarn = '';
-  let mode = 'draw';
-  let drawing = false;
-  let current = [];
-  let selectedRoomId = null;
-  let drag = null;
-  let dimStart = null;
-
-  function pos(e){
-    const r = canvas.getBoundingClientRect();
-    return { x:(e.clientX-r.left)*canvas.width/r.width, y:(e.clientY-r.top)*canvas.height/r.height };
-  }
-  function dist(a,b){ return Math.hypot(a.x-b.x,a.y-b.y); }
-  function centroid(points){
-    const s = points.reduce((a,p)=>({x:a.x+p.x,y:a.y+p.y}),{x:0,y:0});
-    return {x:s.x/points.length,y:s.y/points.length};
-  }
-  function simplify(points){
-    if(points.length < 4) return points;
-    const reduced = rdp(points, 18);
-    return state.correction ? snapOrthogonal(reduced) : reduced;
-  }
-  function perpendicularDistance(p, a, b){
-    const dx=b.x-a.x, dy=b.y-a.y;
-    if(dx===0 && dy===0) return dist(p,a);
-    const t=Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.y-a.y)*dy)/(dx*dx+dy*dy)));
-    return dist(p,{x:a.x+t*dx,y:a.y+t*dy});
-  }
-  function rdp(points, eps){
-    if(points.length<=2) return points;
-    let max=0, idx=0;
-    for(let i=1;i<points.length-1;i++){ const d=perpendicularDistance(points[i],points[0],points[points.length-1]); if(d>max){max=d;idx=i;} }
-    if(max>eps){ const left=rdp(points.slice(0,idx+1),eps); const right=rdp(points.slice(idx),eps); return left.slice(0,-1).concat(right); }
-    return [points[0],points[points.length-1]];
-  }
-  function snapOrthogonal(points){
-    // 縦横に近い線だけ軽く補正。斜め壁は残す。
-    const out=points.map(p=>({...p}));
-    for(let i=1;i<out.length;i++){
-      const a=out[i-1], b=out[i]; const dx=Math.abs(b.x-a.x), dy=Math.abs(b.y-a.y);
-      if(dx<22) b.x=a.x;
-      if(dy<22) b.y=a.y;
-    }
-    return out;
-  }
-  function warn(msg){
-    if(lastWarn===msg) return; lastWarn=msg; modeChip.textContent=msg; setTimeout(()=>{ lastWarn=''; setMode(mode); }, 1200);
-  }
-  function isClosed(points){ return points.length > 18 && dist(points[0], points[points.length-1]) < 55; }
-  function pointInPoly(p, poly){
-    let inside=false;
-    for(let i=0,j=poly.length-1;i<poly.length;j=i++){
-      const xi=poly[i].x, yi=poly[i].y, xj=poly[j].x, yj=poly[j].y;
-      const intersect=((yi>p.y)!=(yj>p.y)) && (p.x < (xj-xi)*(p.y-yi)/(yj-yi)+xi);
-      if(intersect) inside=!inside;
-    }
-    return inside;
-  }
-  function findRoom(p){
-    const rooms=floor().rooms; for(let i=rooms.length-1;i>=0;i--) if(pointInPoly(p,rooms[i].points)) return rooms[i];
-    return null;
-  }
-  function setMode(next){
-    mode=next;
-    document.querySelectorAll('.toolbar button').forEach(b=>b.classList.remove('active'));
-    document.getElementById(next==='draw'?'drawMode':next==='select'?'selectMode':'dimMode').classList.add('active');
-    modeChip.textContent = 'モード：' + (next==='draw'?'図面を書く':next==='select'?'部屋を選ぶ/動かす':'寸法を書く');
-  }
-  function save(){
-    state.projectName = projectName.value;
-    state.memo = memo.value;
-    localStorage.setItem('gencho-note-drawing-v04', JSON.stringify(state));
-    saveStatus.textContent = '保存済み ' + new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'});
-  }
-  function load(){
-    try{ const raw=localStorage.getItem('gencho-note-drawing-v04') || localStorage.getItem('gencho-note-drawing-v03') || localStorage.getItem('gencho-note-drawing-v02'); if(raw) state=JSON.parse(raw); syncLegacy(); }catch(e){syncLegacy();}
-    projectName.value=state.projectName||''; memo.value=state.memo||''; render();
-    renderFloors(); updateCorrectionButton(); if(localStorage.getItem('gencho-note-drawing-v04') || localStorage.getItem('gencho-note-drawing-v03') || localStorage.getItem('gencho-note-drawing-v02')) saveStatus.textContent='保存データ読込済み';
-  }
-  function render(){
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    drawGrid();
-    const f=floor();
-    f.rooms.forEach(drawRoom);
-    f.strokes.filter(s=>!s.closed).forEach(s=>drawLine(s.points, '#374151', 4));
-    f.dims.forEach(drawDim);
-    if(current.length) drawLine(current, mode==='dim'?'#f59e0b':'#111827', mode==='dim'?3:4);
-  }
-  function drawGrid(){
-    ctx.save(); ctx.strokeStyle='#eee3cf'; ctx.lineWidth=1;
-    for(let x=0;x<canvas.width;x+=48){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke();}
-    for(let y=0;y<canvas.height;y+=48){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke();}
-    ctx.restore();
-  }
-  function drawLine(points,color,width){
-    if(points.length<2) return; ctx.save(); ctx.strokeStyle=color; ctx.lineWidth=width; ctx.lineCap='round'; ctx.lineJoin='round';
-    ctx.beginPath(); ctx.moveTo(points[0].x,points[0].y); points.slice(1).forEach(p=>ctx.lineTo(p.x,p.y)); ctx.stroke(); ctx.restore();
-  }
-  function drawRoom(room){
-    const selected = room.id===selectedRoomId;
-    ctx.save(); ctx.beginPath(); ctx.moveTo(room.points[0].x,room.points[0].y); room.points.slice(1).forEach(p=>ctx.lineTo(p.x,p.y)); ctx.closePath();
-    ctx.fillStyle = selected ? 'rgba(37,99,235,.18)' : 'rgba(5,150,105,.12)'; ctx.fill();
-    ctx.strokeStyle = selected ? '#2563eb' : '#059669'; ctx.lineWidth = selected ? 5 : 3; ctx.stroke();
-    const c=centroid(room.points); ctx.fillStyle='rgba(255,255,255,.9)'; ctx.strokeStyle='#d7cdbb';
-    const label=room.name||'未設定'; ctx.font='bold 28px -apple-system,BlinkMacSystemFont,sans-serif'; const w=ctx.measureText(label).width+28;
-    ctx.beginPath(); roundRect(ctx,c.x-w/2,c.y-24,w,48,16); ctx.fill(); ctx.stroke();
-    ctx.fillStyle='#1f2937'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(label,c.x,c.y); ctx.restore();
-  }
-  function roundRect(ctx,x,y,w,h,r){ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);}
-  function drawDim(d){
-    ctx.save(); ctx.strokeStyle='#f59e0b'; ctx.fillStyle='#92400e'; ctx.lineWidth=4; ctx.setLineDash([10,8]);
-    ctx.beginPath(); ctx.moveTo(d.a.x,d.a.y); ctx.lineTo(d.b.x,d.b.y); ctx.stroke(); ctx.setLineDash([]);
-    const m={x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2}; ctx.font='bold 24px -apple-system,BlinkMacSystemFont,sans-serif';
-    const txt=d.label; const w=ctx.measureText(txt).width+22; ctx.fillStyle='rgba(255,250,240,.95)'; ctx.strokeStyle='#f59e0b';
-    ctx.beginPath(); roundRect(ctx,m.x-w/2,m.y-22,w,44,12); ctx.fill(); ctx.stroke(); ctx.fillStyle='#92400e'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(txt,m.x,m.y); ctx.restore();
-  }
-  function openPanel(room){
-    selectedRoomId=room.id; customRoomName.value=room.name||''; choicesEl.innerHTML='';
-    roomNames.forEach(n=>{const b=document.createElement('button');b.type='button';b.textContent=n;b.addEventListener('click',()=>{customRoomName.value=n; applyName();});choicesEl.appendChild(b);});
-    panel.classList.add('show'); render();
-  }
-  function closePanel(){ panel.classList.remove('show'); selectedRoomId=null; render(); }
-  function applyName(){
-    const room=floor().rooms.find(r=>r.id===selectedRoomId); if(room){room.name=customRoomName.value||'未設定'; save(); render();}
-  }
-  canvas.addEventListener('pointerdown', e=>{
-    canvas.setPointerCapture(e.pointerId); const p=pos(e);
-    if(mode==='draw') {
-      if(e.pointerType !== 'pen'){ warn('描画はApple Pencilのみです'); return; }
-      drawing=true; current=[p];
-    }
-    if(mode==='select') { const room=findRoom(p); if(room){selectedRoomId=room.id; drag={roomId:room.id,last:p,moved:false};} else {selectedRoomId=null; render();} }
-    if(mode==='dim') {
-      if(e.pointerType !== 'pen'){ warn('寸法線はApple Pencilで書いてください'); return; }
-      dimStart=p; current=[p];
-    }
-  });
-  canvas.addEventListener('pointermove', e=>{
-    const p=pos(e);
-    if(mode==='draw' && drawing){ current.push(p); render(); }
-    if(mode==='select' && drag){
-      const room=floor().rooms.find(r=>r.id===drag.roomId); if(room){ const dx=p.x-drag.last.x, dy=p.y-drag.last.y; moveRoom(room, dx, dy); drag.last=p; drag.moved=true; render(); }
-    }
-    if(mode==='dim' && dimStart){ current=[dimStart,p]; render(); }
-  });
-  canvas.addEventListener('pointerup', e=>{
-    const p=pos(e);
-    if(mode==='draw' && drawing){
-      drawing=false; const closed=isClosed(current); const pts=closed?simplify(current.slice(0,-1)):current.slice();
-      const strokeId = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
-      const f=floor(); f.strokes.push({id:strokeId, points:pts, closed});
-      if(closed){ f.rooms.push({id:Date.now().toString(36), strokeId, name:'未設定', points:pts.map(p=>({...p}))}); setTimeout(()=>openPanel(f.rooms[f.rooms.length-1]),80); }
-      current=[]; save(); render();
-    }
-    if(mode==='select' && drag){ const room=floor().rooms.find(r=>r.id===drag.roomId); if(room && !drag.moved) openPanel(room); if(room && drag.moved) magnetSnap(room); drag=null; save(); render(); }
-    if(mode==='dim' && dimStart){
-      const label=prompt('寸法を入力（例：2500、W1650、CH2200）','');
-      if(label) floor().dims.push({a:dimStart,b:p,label}); dimStart=null; current=[]; save(); render();
-    }
-  });
-  document.getElementById('drawMode').addEventListener('click',()=>setMode('draw'));
-  document.getElementById('selectMode').addEventListener('click',()=>setMode('select'));
-  document.getElementById('dimMode').addEventListener('click',()=>setMode('dim'));
-  document.getElementById('undoBtn').addEventListener('click',()=>{ const f=floor(); if(f.dims.length) f.dims.pop(); else if(f.rooms.length){ const r=f.rooms.pop(); if(r.strokeId) f.strokes=f.strokes.filter(s=>s.id!==r.strokeId); } else if(f.strokes.length) f.strokes.pop(); save(); render(); });
-  document.getElementById('clearBtn').addEventListener('click',()=>{ if(confirm(state.activeFloor+'の図面データを消去しますか？')){const f=floor();f.strokes=[];f.rooms=[];f.dims=[];save();render();} });
-  document.getElementById('applyRoomName').addEventListener('click',()=>{applyName(); closePanel();});
-  document.getElementById('closePanel').addEventListener('click',closePanel);
-  document.getElementById('deleteRoom').addEventListener('click',()=>{ const f=floor(); const room=f.rooms.find(r=>r.id===selectedRoomId); f.rooms=f.rooms.filter(r=>r.id!==selectedRoomId); if(room && room.strokeId) f.strokes=f.strokes.filter(s=>s.id!==room.strokeId); save(); closePanel(); render(); });
-  projectName.addEventListener('input',save); memo.addEventListener('input',save);
-  document.getElementById('pdfBtn').addEventListener('click',()=>{ save(); window.print(); });
-  document.getElementById('exportBtn').addEventListener('click',()=>{
-    save(); const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
-    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=(projectName.value||'gencho-note')+'-drawing-v04.json'; a.click(); URL.revokeObjectURL(a.href);
-  });
-
-  function updateCorrectionButton(){
-    const btn=document.getElementById('toggleCorrection');
-    btn.textContent = state.correction ? '補正ON' : '補正OFF';
-    btn.classList.toggle('active', !!state.correction);
-  }
-  function renderFloors(){
-    const el=document.getElementById('floorTabs'); if(!el) return; el.innerHTML='';
-    Object.keys(state.floors).forEach(name=>{
-      const b=document.createElement('button'); b.type='button'; b.textContent=name; b.className = name===state.activeFloor ? 'active' : '';
-      b.addEventListener('click',()=>{ state.activeFloor=name; selectedRoomId=null; document.getElementById('floorChip').textContent=name; renderFloors(); save(); render(); });
-      el.appendChild(b);
-    });
-    document.getElementById('floorChip').textContent=state.activeFloor;
-  }
-  function magnetSnap(room){
-    const threshold=34; const rb=bbox(room.points); let best=null;
-    floor().rooms.forEach(other=>{
-      if(other.id===room.id) return; const ob=bbox(other.points);
-      const overlapsY = rb.maxY > ob.minY-threshold && rb.minY < ob.maxY+threshold;
-      const overlapsX = rb.maxX > ob.minX-threshold && rb.minX < ob.maxX+threshold;
-      const candidates=[];
-      if(overlapsY){ candidates.push({dx:ob.minX-rb.maxX,dy:0,d:Math.abs(ob.minX-rb.maxX)}); candidates.push({dx:ob.maxX-rb.minX,dy:0,d:Math.abs(ob.maxX-rb.minX)}); }
-      if(overlapsX){ candidates.push({dx:0,dy:ob.minY-rb.maxY,d:Math.abs(ob.minY-rb.maxY)}); candidates.push({dx:0,dy:ob.maxY-rb.minY,d:Math.abs(ob.maxY-rb.minY)}); }
-      candidates.forEach(c=>{ if(c.d<threshold && (!best || c.d<best.d)) best=c; });
-    });
-    if(best){ moveRoom(room,best.dx,best.dy); modeChip.textContent='マグネット吸着しました'; setTimeout(()=>setMode(mode),900); }
-  }
-  document.getElementById('toggleCorrection').addEventListener('click',()=>{ state.correction=!state.correction; updateCorrectionButton(); save(); });
-  document.getElementById('addFloorBtn').addEventListener('click',()=>{ const name=prompt('階・ページ名を入力（例：3F、外構、詳細）','3F'); if(!name) return; if(!state.floors[name]) state.floors[name]={strokes:[],rooms:[],dims:[]}; state.activeFloor=name; renderFloors(); save(); render(); });
-
-  load();
+(()=>{
+const canvas=document.getElementById('planCanvas'),ctx=canvas.getContext('2d');
+const projectName=document.getElementById('projectName'),memo=document.getElementById('memo'),saveStatus=document.getElementById('saveStatus'),modeChip=document.getElementById('modeChip'),toolChip=document.getElementById('toolChip');
+const panel=document.getElementById('roomPanel'),choicesEl=document.getElementById('roomChoices'),customName=document.getElementById('customName'),panelTitle=document.getElementById('panelTitle'),panelHelp=document.getElementById('panelHelp');
+const roomNames=['浴室','洗面所','脱衣所','トイレ','キッチン','LDK','洋室','和室','廊下','玄関','収納','CL','WIC','押入','その他'];
+const fixtureNames=['キッチン','洗面台','トイレ','UB','浴槽','洗濯パン','冷蔵庫','収納','給湯器','その他'];
+const openingNames=['ドア','引戸','窓','掃き出し窓','開口','収納扉'];
+let state={projectName:'',memo:'',correction:true,activeFloor:'1F',floors:{'1F':blank(),'2F':blank()}};
+function blank(){return {strokes:[],rooms:[],dims:[],openings:[],fixtures:[]};}
+function floor(){if(!state.floors)state.floors={'1F':blank()};if(!state.activeFloor)state.activeFloor='1F';if(!state.floors[state.activeFloor])state.floors[state.activeFloor]=blank();const f=state.floors[state.activeFloor];f.openings=f.openings||[];f.fixtures=f.fixtures||[];f.dims=f.dims||[];f.rooms=f.rooms||[];f.strokes=f.strokes||[];return f;}
+let mode='draw',drawing=false,current=[],selected={type:null,id:null},drag=null,dimStart=null,history=[],future=[],lastWarn='',openType='ドア',fixtureType='キッチン';
+function clone(o){return JSON.parse(JSON.stringify(o));}function pushHistory(){history.push(clone(state));if(history.length>40)history.shift();future=[];}function restore(s){state=clone(s);projectName.value=state.projectName||'';memo.value=state.memo||'';renderFloors();updateCorrectionButton();render();save();}
+function pos(e){const r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height};}
+function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}function bbox(points){return{minX:Math.min(...points.map(p=>p.x)),maxX:Math.max(...points.map(p=>p.x)),minY:Math.min(...points.map(p=>p.y)),maxY:Math.max(...points.map(p=>p.y))};}function centroid(points){const s=points.reduce((a,p)=>({x:a.x+p.x,y:a.y+p.y}),{x:0,y:0});return{x:s.x/points.length,y:s.y/points.length};}
+function id(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}function warn(msg){if(lastWarn===msg)return;lastWarn=msg;modeChip.textContent=msg;setTimeout(()=>{lastWarn='';setMode(mode)},1200);}function isClosed(points){return points.length>18&&dist(points[0],points[points.length-1])<55;}
+function perpendicularDistance(p,a,b){const dx=b.x-a.x,dy=b.y-a.y;if(dx===0&&dy===0)return dist(p,a);const t=Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.y-a.y)*dy)/(dx*dx+dy*dy)));return dist(p,{x:a.x+t*dx,y:a.y+t*dy});}
+function rdp(points,eps){if(points.length<=2)return points;let max=0,idx=0;for(let i=1;i<points.length-1;i++){const d=perpendicularDistance(points[i],points[0],points[points.length-1]);if(d>max){max=d;idx=i;}}if(max>eps){const l=rdp(points.slice(0,idx+1),eps),r=rdp(points.slice(idx),eps);return l.slice(0,-1).concat(r);}return[points[0],points[points.length-1]];}
+function snapOrthogonal(points){const out=points.map(p=>({...p}));for(let i=1;i<out.length;i++){const a=out[i-1],b=out[i],dx=Math.abs(b.x-a.x),dy=Math.abs(b.y-a.y);if(dx<24)b.x=a.x;if(dy<24)b.y=a.y;}return out;}function simplify(points){if(points.length<4)return points;let p=rdp(points,18);return state.correction?snapOrthogonal(p):p;}
+function pointInPoly(p,poly){let inside=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const xi=poly[i].x,yi=poly[i].y,xj=poly[j].x,yj=poly[j].y;const inter=((yi>p.y)!=(yj>p.y))&&(p.x<(xj-xi)*(p.y-yi)/(yj-yi)+xi);if(inter)inside=!inside;}return inside;}
+function findRoom(p){const a=floor().rooms;for(let i=a.length-1;i>=0;i--)if(pointInPoly(p,a[i].points))return a[i];return null;}function nearLine(p,a,b,t=20){return perpendicularDistance(p,a,b)<t&&p.x>=Math.min(a.x,b.x)-t&&p.x<=Math.max(a.x,b.x)+t&&p.y>=Math.min(a.y,b.y)-t&&p.y<=Math.max(a.y,b.y)+t;}
+function findAt(p){const f=floor();for(let i=f.fixtures.length-1;i>=0;i--)if(dist(p,f.fixtures[i])<36)return{type:'fixture',item:f.fixtures[i]};for(let i=f.openings.length-1;i>=0;i--)if(nearLine(p,f.openings[i].a,f.openings[i].b,24))return{type:'opening',item:f.openings[i]};for(let i=f.dims.length-1;i>=0;i--)if(nearLine(p,f.dims[i].a,f.dims[i].b,22))return{type:'dim',item:f.dims[i]};const r=findRoom(p);if(r)return{type:'room',item:r};return null;}
+function setStrokePoints(strokeId,points){const s=floor().strokes.find(x=>x.id===strokeId);if(s)s.points=points.map(p=>({...p}));}
+function moveRoom(room,dx,dy){room.points=room.points.map(q=>({x:q.x+dx,y:q.y+dy}));if(room.strokeId)setStrokePoints(room.strokeId,room.points);}function moveItem(obj,dx,dy){if(obj.type==='room')moveRoom(obj.item,dx,dy);else if(obj.type==='fixture'){obj.item.x+=dx;obj.item.y+=dy;}else if(obj.type==='opening'||obj.type==='dim'){obj.item.a.x+=dx;obj.item.a.y+=dy;obj.item.b.x+=dx;obj.item.b.y+=dy;}}
+function setMode(next){mode=next;document.querySelectorAll('.toolbar button').forEach(b=>b.classList.remove('active'));const m={draw:'drawMode',select:'selectMode',dim:'dimMode',opening:'openingMode',fixture:'fixtureMode',erase:'eraseMode'};document.getElementById(m[next]).classList.add('active');modeChip.textContent='モード：'+({draw:'図面',select:'移動/名前',dim:'寸法線',opening:'開口部',fixture:'設備',erase:'消しゴム'}[next]);}
+function save(){state.projectName=projectName.value;state.memo=memo.value;localStorage.setItem('gencho-note-drawing-v05',JSON.stringify(state));saveStatus.textContent='保存済み '+new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'});}function load(){try{const raw=localStorage.getItem('gencho-note-drawing-v05')||localStorage.getItem('gencho-note-drawing-v04');if(raw)state=JSON.parse(raw);}catch(e){}projectName.value=state.projectName||'';memo.value=state.memo||'';renderFloors();updateCorrectionButton();render();if(localStorage.getItem('gencho-note-drawing-v05')||localStorage.getItem('gencho-note-drawing-v04'))saveStatus.textContent='保存データ読込済み';}
+function render(){ctx.clearRect(0,0,canvas.width,canvas.height);drawGrid();const f=floor();f.rooms.forEach(drawRoom);f.strokes.filter(s=>!s.closed).forEach(s=>drawLine(s.points,'#374151',4));f.openings.forEach(drawOpening);f.fixtures.forEach(drawFixture);f.dims.forEach(drawDim);if(current.length)drawLine(current,mode==='dim'?'#f59e0b':mode==='opening'?'#7c3aed':'#111827',mode==='dim'||mode==='opening'?3:4);}function drawGrid(){ctx.save();ctx.strokeStyle='#eee3cf';ctx.lineWidth=1;for(let x=0;x<canvas.width;x+=48){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke();}for(let y=0;y<canvas.height;y+=48){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke();}ctx.restore();}
+function drawLine(points,color,width){if(points.length<2)return;ctx.save();ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);points.slice(1).forEach(p=>ctx.lineTo(p.x,p.y));ctx.stroke();ctx.restore();}
+function roundRect(ctx,x,y,w,h,r){ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);}function drawRoom(room){const sel=selected.type==='room'&&selected.id===room.id;ctx.save();ctx.beginPath();ctx.moveTo(room.points[0].x,room.points[0].y);room.points.slice(1).forEach(p=>ctx.lineTo(p.x,p.y));ctx.closePath();ctx.fillStyle=sel?'rgba(37,99,235,.13)':'rgba(5,150,105,.08)';ctx.fill();ctx.strokeStyle=sel?'#2563eb':'#059669';ctx.lineWidth=sel?5:3;ctx.stroke();if(room.name&&room.name!=='未設定'){const c=centroid(room.points);ctx.globalAlpha=.38;ctx.fillStyle='#111827';ctx.font='700 30px -apple-system,BlinkMacSystemFont,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(room.name,c.x,c.y);}ctx.restore();}
+function drawDim(d){ctx.save();ctx.strokeStyle='#f59e0b';ctx.fillStyle='#92400e';ctx.lineWidth=4;ctx.setLineDash([10,8]);ctx.beginPath();ctx.moveTo(d.a.x,d.a.y);ctx.lineTo(d.b.x,d.b.y);ctx.stroke();ctx.setLineDash([]);const m={x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2};ctx.font='bold 24px -apple-system,BlinkMacSystemFont,sans-serif';const txt=d.label||'';const w=ctx.measureText(txt).width+22;ctx.fillStyle='rgba(255,250,240,.95)';ctx.strokeStyle='#f59e0b';ctx.beginPath();roundRect(ctx,m.x-w/2,m.y-22,w,44,12);ctx.fill();ctx.stroke();ctx.fillStyle='#92400e';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(txt,m.x,m.y);ctx.restore();}
+function drawOpening(o){ctx.save();ctx.strokeStyle='#7c3aed';ctx.fillStyle='#7c3aed';ctx.lineWidth=5;ctx.lineCap='round';const a=o.a,b=o.b,ang=Math.atan2(b.y-a.y,b.x-a.x),len=dist(a,b);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.font='bold 22px -apple-system';ctx.textAlign='center';ctx.textBaseline='bottom';const m={x:(a.x+b.x)/2,y:(a.y+b.y)/2};ctx.fillText(o.type,m.x,m.y-8);if(o.type.includes('ドア')){ctx.lineWidth=3;ctx.beginPath();ctx.arc(a.x,a.y,Math.min(70,len),ang,ang+Math.PI/2);ctx.stroke();}else if(o.type.includes('窓')){const nx=Math.cos(ang+Math.PI/2)*8,ny=Math.sin(ang+Math.PI/2)*8;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(a.x+nx,a.y+ny);ctx.lineTo(b.x+nx,b.y+ny);ctx.moveTo(a.x-nx,a.y-ny);ctx.lineTo(b.x-nx,b.y-ny);ctx.stroke();}ctx.restore();}
+function drawFixture(it){ctx.save();const sel=selected.type==='fixture'&&selected.id===it.id;ctx.translate(it.x,it.y);ctx.strokeStyle=sel?'#2563eb':'#111827';ctx.fillStyle='rgba(255,255,255,.88)';ctx.lineWidth=3;ctx.beginPath();roundRect(ctx,-44,-26,88,52,12);ctx.fill();ctx.stroke();ctx.fillStyle='#111827';ctx.globalAlpha=.75;ctx.font='bold 18px -apple-system';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(it.type,0,0);ctx.restore();}
+function openPanel(obj){selected={type:obj.type,id:obj.item.id};choicesEl.innerHTML='';let names=obj.type==='fixture'?fixtureNames:obj.type==='opening'?openingNames:roomNames;panelTitle.textContent=obj.type==='fixture'?'設備名を設定':obj.type==='opening'?'開口部を設定':'部屋名を設定';panelHelp.textContent=obj.type==='room'?'書き終わってから部屋名を付けます。':'種類を変更できます。';customName.value=obj.item.name||obj.item.type||'';names.forEach(n=>{const b=document.createElement('button');b.type='button';b.textContent=n;b.addEventListener('click',()=>{customName.value=n;applyName();});choicesEl.appendChild(b);});panel.classList.add('show');render();}
+function closePanel(){panel.classList.remove('show');selected={type:null,id:null};render();}function getSelectedItem(){const f=floor();if(selected.type==='room')return f.rooms.find(x=>x.id===selected.id);if(selected.type==='fixture')return f.fixtures.find(x=>x.id===selected.id);if(selected.type==='opening')return f.openings.find(x=>x.id===selected.id);if(selected.type==='dim')return f.dims.find(x=>x.id===selected.id);}function applyName(){const item=getSelectedItem();if(!item)return;if(selected.type==='room')item.name=customName.value||'未設定';else item.type=customName.value||item.type;save();render();}
+function deleteSelected(){const f=floor();pushHistory();if(selected.type==='room'){const r=f.rooms.find(x=>x.id===selected.id);f.rooms=f.rooms.filter(x=>x.id!==selected.id);if(r&&r.strokeId)f.strokes=f.strokes.filter(s=>s.id!==r.strokeId);}if(selected.type==='fixture')f.fixtures=f.fixtures.filter(x=>x.id!==selected.id);if(selected.type==='opening')f.openings=f.openings.filter(x=>x.id!==selected.id);if(selected.type==='dim')f.dims=f.dims.filter(x=>x.id!==selected.id);save();closePanel();render();}
+function eraseAt(p){const f=floor();let hit=findAt(p);if(hit){selected={type:hit.type,id:hit.item.id};deleteSelected();return;}for(let i=f.strokes.length-1;i>=0;i--){const pts=f.strokes[i].points;for(let j=1;j<pts.length;j++)if(nearLine(p,pts[j-1],pts[j],18)){pushHistory();f.strokes.splice(i,1);save();render();return;}}}
+canvas.addEventListener('pointerdown',e=>{canvas.setPointerCapture(e.pointerId);const p=pos(e);if(mode==='draw'){if(e.pointerType!=='pen'){warn('描画はApple Pencilのみです');return;}drawing=true;current=[p];}else if(mode==='select'){const h=findAt(p);if(h){selected={type:h.type,id:h.item.id};drag={type:h.type,item:h.item,last:p,moved:false};}else{selected={type:null,id:null};render();}}else if(mode==='dim'||mode==='opening'){if(e.pointerType!=='pen'){warn('Apple Pencilで線を書いてください');return;}dimStart=p;current=[p];}else if(mode==='fixture'){pushHistory();floor().fixtures.push({id:id(),type:fixtureType,x:p.x,y:p.y});save();render();}else if(mode==='erase'){eraseAt(p);}});
+canvas.addEventListener('pointermove',e=>{const p=pos(e);if(mode==='draw'&&drawing){current.push(p);render();}else if(mode==='select'&&drag){const dx=p.x-drag.last.x,dy=p.y-drag.last.y;moveItem(drag,dx,dy);drag.last=p;drag.moved=true;render();}else if((mode==='dim'||mode==='opening')&&dimStart){current=[dimStart,p];render();}else if(mode==='erase'&&e.buttons){eraseAt(p);}});
+canvas.addEventListener('pointerup',e=>{const p=pos(e);if(mode==='draw'&&drawing){drawing=false;pushHistory();const closed=isClosed(current);const pts=closed?simplify(current.slice(0,-1)):current.slice();const sid=id();floor().strokes.push({id:sid,points:pts,closed});if(closed)floor().rooms.push({id:id(),strokeId:sid,name:'',points:pts.map(q=>({...q}))});current=[];save();render();}
+else if(mode==='select'&&drag){if(!drag.moved)openPanel(drag);else if(drag.type==='room')magnetSnap(drag.item);drag=null;save();render();}
+else if(mode==='dim'&&dimStart){pushHistory();const label=prompt('寸法を入力（例：2500、W1650、CH2200）','');if(label)floor().dims.push({id:id(),a:dimStart,b:p,label});dimStart=null;current=[];save();render();}
+else if(mode==='opening'&&dimStart){pushHistory();let type=prompt('開口部の種類（ドア・引戸・窓・開口など）',openType)||openType;openType=type;toolChip.textContent='開口：'+openType+' / 設備：'+fixtureType;floor().openings.push({id:id(),type,a:dimStart,b:p});dimStart=null;current=[];save();render();}});
+function magnetSnap(room){const threshold=36,rb=bbox(room.points);let best=null;floor().rooms.forEach(other=>{if(other.id===room.id)return;const ob=bbox(other.points),overY=rb.maxY>ob.minY-threshold&&rb.minY<ob.maxY+threshold,overX=rb.maxX>ob.minX-threshold&&rb.minX<ob.maxX+threshold,c=[];if(overY){c.push({dx:ob.minX-rb.maxX,dy:0,d:Math.abs(ob.minX-rb.maxX)});c.push({dx:ob.maxX-rb.minX,dy:0,d:Math.abs(ob.maxX-rb.minX)});}if(overX){c.push({dx:0,dy:ob.minY-rb.maxY,d:Math.abs(ob.minY-rb.maxY)});c.push({dx:0,dy:ob.maxY-rb.minY,d:Math.abs(ob.maxY-rb.minY)});}c.forEach(x=>{if(x.d<threshold&&(!best||x.d<best.d))best=x;});});if(best){moveRoom(room,best.dx,best.dy);modeChip.textContent='マグネット吸着しました';setTimeout(()=>setMode(mode),900);}}
+function renderFloors(){const el=document.getElementById('floorTabs');el.innerHTML='';Object.keys(state.floors).forEach(name=>{const b=document.createElement('button');b.type='button';b.textContent=name;b.className=name===state.activeFloor?'active':'';b.addEventListener('click',()=>{state.activeFloor=name;selected={type:null,id:null};document.getElementById('floorChip').textContent=name;renderFloors();save();render();});el.appendChild(b);});document.getElementById('floorChip').textContent=state.activeFloor;}
+function updateCorrectionButton(){const b=document.getElementById('toggleCorrection');b.textContent=state.correction?'補正ON':'補正OFF';b.classList.toggle('active',!!state.correction);}document.getElementById('toggleCorrection').addEventListener('click',()=>{state.correction=!state.correction;updateCorrectionButton();save();});
+['draw','select','dim','opening','fixture','erase'].forEach(m=>document.getElementById(m+'Mode').addEventListener('click',()=>setMode(m)));
+document.getElementById('undoBtn').addEventListener('click',()=>{if(!history.length)return;future.push(clone(state));restore(history.pop());});document.getElementById('redoBtn').addEventListener('click',()=>{if(!future.length)return;history.push(clone(state));restore(future.pop());});document.getElementById('clearBtn').addEventListener('click',()=>{if(confirm(state.activeFloor+'の図面データを消去しますか？')){pushHistory();state.floors[state.activeFloor]=blank();save();render();}});
+document.getElementById('addFloorBtn').addEventListener('click',()=>{const name=prompt('階・ページ名（例：1F詳細、2F、外構）','1F詳細');if(!name)return;if(!state.floors[name])state.floors[name]=blank();state.activeFloor=name;renderFloors();save();render();});document.getElementById('applyName').addEventListener('click',()=>{applyName();closePanel();});document.getElementById('closePanel').addEventListener('click',closePanel);document.getElementById('deleteItem').addEventListener('click',deleteSelected);projectName.addEventListener('input',save);memo.addEventListener('input',save);document.getElementById('pdfBtn').addEventListener('click',()=>{save();window.print();});document.getElementById('exportBtn').addEventListener('click',()=>{save();const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=(projectName.value||'gencho-note')+'-drawing-v05.json';a.click();URL.revokeObjectURL(a.href);});
+// 設備ボタンは長押しの代わりに押すたび種類変更
+const fxBtn=document.getElementById('fixtureMode');fxBtn.addEventListener('dblclick',()=>{const t=prompt('設備種類',fixtureType);if(t){fixtureType=t;toolChip.textContent='開口：'+openType+' / 設備：'+fixtureType;}});
+load();
 })();
 </script>
 </body>
