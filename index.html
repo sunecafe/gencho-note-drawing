@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Gencho Note 図面モード v0.3</title>
+  <title>Gencho Note 図面モード v0.4</title>
   <style>
     :root{
       --bg:#f4f1ea; --paper:#fffaf0; --ink:#1f2937; --muted:#6b7280; --line:#374151;
@@ -19,7 +19,9 @@
     input,textarea{border:1px solid var(--border);border-radius:10px;padding:9px 10px;background:white;color:var(--ink);}
     #projectName{flex:1;min-width:0;}
     .saveStatus{font-size:12px;color:var(--muted);white-space:nowrap;}
-    .toolbar{display:flex;gap:8px;overflow-x:auto;padding:10px 12px;background:#ebe4d6;border-bottom:1px solid var(--border);position:sticky;top:75px;z-index:15;}
+    .toolbar{display:flex;gap:8px;overflow-x:auto;padding:10px 12px;background:#ebe4d6;border-bottom:1px solid var(--border);position:sticky;top:112px;z-index:15;}
+    .floorTabs{display:flex;gap:8px;overflow-x:auto;margin-top:8px;padding-bottom:2px;}
+    .floorTabs button{padding:7px 12px;font-size:13px;}
     button{border:1px solid var(--border);border-radius:999px;background:white;padding:9px 12px;white-space:nowrap;color:var(--ink);font-weight:650;}
     button.active{background:var(--accent);color:white;border-color:var(--accent);}
     button.danger{color:var(--danger);}
@@ -42,13 +44,13 @@
     textarea{width:100%;min-height:84px;resize:vertical;}
     .small{font-size:12px;color:var(--muted);}
     @media print{ header,.toolbar,.memoBox .small,button{display:none!important;} body{background:white;} main{padding:0;} .canvasWrap{border:1px solid #999;box-shadow:none;border-radius:0;} canvas{height:auto;min-height:0;background:white;} .memoBox{page-break-inside:avoid;border:1px solid #999;} }
-    @media (max-width:560px){ canvas{height:62vh;min-height:430px;} .toolbar{top:106px;} .site{flex-wrap:wrap}.saveStatus{width:100%;} }
+    @media (max-width:560px){ canvas{height:62vh;min-height:430px;} .toolbar{top:148px;} .site{flex-wrap:wrap}.saveStatus{width:100%;} }
   </style>
 </head>
 <body>
   <header>
     <div class="top">
-      <h1>Gencho Note 図面モード v0.3</h1>
+      <h1>Gencho Note 図面モード v0.4</h1>
       <span class="saveStatus" id="saveStatus">未保存</span>
     </div>
     <div class="site">
@@ -56,25 +58,29 @@
       <button id="pdfBtn" type="button">PDF出力</button>
       <button id="exportBtn" type="button">バックアップ</button>
     </div>
+    <div class="floorTabs" id="floorTabs"></div>
   </header>
 
   <nav class="toolbar" aria-label="操作モード">
     <button id="drawMode" class="active" type="button">✏️ 図面を書く</button>
     <button id="selectMode" type="button">👆 部屋を選ぶ/動かす</button>
     <button id="dimMode" type="button">📏 寸法を書く</button>
+    <button id="toggleCorrection" type="button">補正ON</button>
+    <button id="addFloorBtn" type="button">＋階追加</button>
     <button id="undoBtn" type="button">戻す</button>
     <button id="clearBtn" class="danger" type="button">全消去</button>
   </nav>
 
   <main>
     <p class="hint">
-      まず全体平面図を大きく描きます。Apple Pencilで閉じた形を描くと部屋候補になります。指では部屋を選択・移動します。
+      まず全体平面図を大きく描きます。Apple Pencilで閉じた形を描くと部屋候補になります。指では部屋を選択・移動します。近づけるとマグネット吸着します。
     </p>
     <section class="canvasWrap">
       <canvas id="planCanvas" width="1400" height="1000" aria-label="全体平面図キャンバス"></canvas>
       <div class="floatPanel">
         <span class="chip" id="modeChip">モード：図面を書く</span>
         <span class="chip">自動保存ON</span>
+        <span class="chip" id="floorChip">1F</span>
         <span class="chip" id="penChip">描画：Apple Pencilのみ</span>
       </div>
     </section>
@@ -113,7 +119,12 @@
   const customRoomName = document.getElementById('customRoomName');
   const roomNames = ['浴室','洗面所','脱衣所','トイレ','キッチン','LDK','洋室','和室','廊下','玄関','収納','CL','WIC','押入','その他'];
 
-  let state = { projectName:'', memo:'', strokes:[], rooms:[], dims:[] };
+  let state = { projectName:'', memo:'', correction:true, activeFloor:'1F', floors:{ '1F':{strokes:[], rooms:[], dims:[]}, '2F':{strokes:[], rooms:[], dims:[]} } };
+  function floor(){ if(!state.floors) state.floors={'1F':{strokes:state.strokes||[],rooms:state.rooms||[],dims:state.dims||[]}}; if(!state.activeFloor) state.activeFloor='1F'; if(!state.floors[state.activeFloor]) state.floors[state.activeFloor]={strokes:[],rooms:[],dims:[]}; return state.floors[state.activeFloor]; }
+  function syncLegacy(){ if(!state.floors){ state.floors={'1F':{strokes:state.strokes||[],rooms:state.rooms||[],dims:state.dims||[]}, '2F':{strokes:[],rooms:[],dims:[]}}; state.activeFloor='1F'; } }
+  function setStrokePoints(strokeId, points){ const s=floor().strokes.find(x=>x.id===strokeId); if(s) s.points=points.map(p=>({...p})); }
+  function moveRoom(room, dx, dy){ room.points=room.points.map(q=>({x:q.x+dx,y:q.y+dy})); if(room.strokeId) setStrokePoints(room.strokeId, room.points); }
+  function bbox(points){ return {minX:Math.min(...points.map(p=>p.x)), maxX:Math.max(...points.map(p=>p.x)), minY:Math.min(...points.map(p=>p.y)), maxY:Math.max(...points.map(p=>p.y))}; }
   let lastWarn = '';
   let mode = 'draw';
   let drawing = false;
@@ -134,7 +145,7 @@
   function simplify(points){
     if(points.length < 4) return points;
     const reduced = rdp(points, 18);
-    return snapOrthogonal(reduced);
+    return state.correction ? snapOrthogonal(reduced) : reduced;
   }
   function perpendicularDistance(p, a, b){
     const dx=b.x-a.x, dy=b.y-a.y;
@@ -173,7 +184,7 @@
     return inside;
   }
   function findRoom(p){
-    for(let i=state.rooms.length-1;i>=0;i--) if(pointInPoly(p,state.rooms[i].points)) return state.rooms[i];
+    const rooms=floor().rooms; for(let i=rooms.length-1;i>=0;i--) if(pointInPoly(p,rooms[i].points)) return rooms[i];
     return null;
   }
   function setMode(next){
@@ -185,20 +196,21 @@
   function save(){
     state.projectName = projectName.value;
     state.memo = memo.value;
-    localStorage.setItem('gencho-note-drawing-v03', JSON.stringify(state));
+    localStorage.setItem('gencho-note-drawing-v04', JSON.stringify(state));
     saveStatus.textContent = '保存済み ' + new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'});
   }
   function load(){
-    try{ const raw=localStorage.getItem('gencho-note-drawing-v03') || localStorage.getItem('gencho-note-drawing-v02'); if(raw) state=JSON.parse(raw); }catch(e){}
+    try{ const raw=localStorage.getItem('gencho-note-drawing-v04') || localStorage.getItem('gencho-note-drawing-v03') || localStorage.getItem('gencho-note-drawing-v02'); if(raw) state=JSON.parse(raw); syncLegacy(); }catch(e){syncLegacy();}
     projectName.value=state.projectName||''; memo.value=state.memo||''; render();
-    if(localStorage.getItem('gencho-note-drawing-v03') || localStorage.getItem('gencho-note-drawing-v02')) saveStatus.textContent='保存データ読込済み';
+    renderFloors(); updateCorrectionButton(); if(localStorage.getItem('gencho-note-drawing-v04') || localStorage.getItem('gencho-note-drawing-v03') || localStorage.getItem('gencho-note-drawing-v02')) saveStatus.textContent='保存データ読込済み';
   }
   function render(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
     drawGrid();
-    state.rooms.forEach(drawRoom);
-    state.strokes.forEach(s=>drawLine(s.points, s.closed?'rgba(55,65,81,.7)':'#374151', s.closed?3:4));
-    state.dims.forEach(drawDim);
+    const f=floor();
+    f.rooms.forEach(drawRoom);
+    f.strokes.filter(s=>!s.closed).forEach(s=>drawLine(s.points, '#374151', 4));
+    f.dims.forEach(drawDim);
     if(current.length) drawLine(current, mode==='dim'?'#f59e0b':'#111827', mode==='dim'?3:4);
   }
   function drawGrid(){
@@ -236,7 +248,7 @@
   }
   function closePanel(){ panel.classList.remove('show'); selectedRoomId=null; render(); }
   function applyName(){
-    const room=state.rooms.find(r=>r.id===selectedRoomId); if(room){room.name=customRoomName.value||'未設定'; save(); render();}
+    const room=floor().rooms.find(r=>r.id===selectedRoomId); if(room){room.name=customRoomName.value||'未設定'; save(); render();}
   }
   canvas.addEventListener('pointerdown', e=>{
     canvas.setPointerCapture(e.pointerId); const p=pos(e);
@@ -254,7 +266,7 @@
     const p=pos(e);
     if(mode==='draw' && drawing){ current.push(p); render(); }
     if(mode==='select' && drag){
-      const room=state.rooms.find(r=>r.id===drag.roomId); if(room){ const dx=p.x-drag.last.x, dy=p.y-drag.last.y; room.points=room.points.map(q=>({x:q.x+dx,y:q.y+dy})); drag.last=p; drag.moved=true; render(); }
+      const room=floor().rooms.find(r=>r.id===drag.roomId); if(room){ const dx=p.x-drag.last.x, dy=p.y-drag.last.y; moveRoom(room, dx, dy); drag.last=p; drag.moved=true; render(); }
     }
     if(mode==='dim' && dimStart){ current=[dimStart,p]; render(); }
   });
@@ -263,30 +275,61 @@
     if(mode==='draw' && drawing){
       drawing=false; const closed=isClosed(current); const pts=closed?simplify(current.slice(0,-1)):current.slice();
       const strokeId = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
-      state.strokes.push({id:strokeId, points:pts, closed});
-      if(closed){ state.rooms.push({id:Date.now().toString(36), strokeId, name:'未設定', points:pts}); setTimeout(()=>openPanel(state.rooms[state.rooms.length-1]),80); }
+      const f=floor(); f.strokes.push({id:strokeId, points:pts, closed});
+      if(closed){ f.rooms.push({id:Date.now().toString(36), strokeId, name:'未設定', points:pts.map(p=>({...p}))}); setTimeout(()=>openPanel(f.rooms[f.rooms.length-1]),80); }
       current=[]; save(); render();
     }
-    if(mode==='select' && drag){ const room=state.rooms.find(r=>r.id===drag.roomId); if(room && !drag.moved) openPanel(room); drag=null; save(); render(); }
+    if(mode==='select' && drag){ const room=floor().rooms.find(r=>r.id===drag.roomId); if(room && !drag.moved) openPanel(room); if(room && drag.moved) magnetSnap(room); drag=null; save(); render(); }
     if(mode==='dim' && dimStart){
       const label=prompt('寸法を入力（例：2500、W1650、CH2200）','');
-      if(label) state.dims.push({a:dimStart,b:p,label}); dimStart=null; current=[]; save(); render();
+      if(label) floor().dims.push({a:dimStart,b:p,label}); dimStart=null; current=[]; save(); render();
     }
   });
   document.getElementById('drawMode').addEventListener('click',()=>setMode('draw'));
   document.getElementById('selectMode').addEventListener('click',()=>setMode('select'));
   document.getElementById('dimMode').addEventListener('click',()=>setMode('dim'));
-  document.getElementById('undoBtn').addEventListener('click',()=>{ if(state.dims.length) state.dims.pop(); else if(state.rooms.length){ const r=state.rooms.pop(); if(r.strokeId) state.strokes=state.strokes.filter(s=>s.id!==r.strokeId); } else if(state.strokes.length) state.strokes.pop(); save(); render(); });
-  document.getElementById('clearBtn').addEventListener('click',()=>{ if(confirm('全ての図面データを消去しますか？')){state.strokes=[];state.rooms=[];state.dims=[];save();render();} });
+  document.getElementById('undoBtn').addEventListener('click',()=>{ const f=floor(); if(f.dims.length) f.dims.pop(); else if(f.rooms.length){ const r=f.rooms.pop(); if(r.strokeId) f.strokes=f.strokes.filter(s=>s.id!==r.strokeId); } else if(f.strokes.length) f.strokes.pop(); save(); render(); });
+  document.getElementById('clearBtn').addEventListener('click',()=>{ if(confirm(state.activeFloor+'の図面データを消去しますか？')){const f=floor();f.strokes=[];f.rooms=[];f.dims=[];save();render();} });
   document.getElementById('applyRoomName').addEventListener('click',()=>{applyName(); closePanel();});
   document.getElementById('closePanel').addEventListener('click',closePanel);
-  document.getElementById('deleteRoom').addEventListener('click',()=>{ const room=state.rooms.find(r=>r.id===selectedRoomId); state.rooms=state.rooms.filter(r=>r.id!==selectedRoomId); if(room && room.strokeId) state.strokes=state.strokes.filter(s=>s.id!==room.strokeId); save(); closePanel(); render(); });
+  document.getElementById('deleteRoom').addEventListener('click',()=>{ const f=floor(); const room=f.rooms.find(r=>r.id===selectedRoomId); f.rooms=f.rooms.filter(r=>r.id!==selectedRoomId); if(room && room.strokeId) f.strokes=f.strokes.filter(s=>s.id!==room.strokeId); save(); closePanel(); render(); });
   projectName.addEventListener('input',save); memo.addEventListener('input',save);
   document.getElementById('pdfBtn').addEventListener('click',()=>{ save(); window.print(); });
   document.getElementById('exportBtn').addEventListener('click',()=>{
     save(); const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
-    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=(projectName.value||'gencho-note')+'-drawing-v03.json'; a.click(); URL.revokeObjectURL(a.href);
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=(projectName.value||'gencho-note')+'-drawing-v04.json'; a.click(); URL.revokeObjectURL(a.href);
   });
+
+  function updateCorrectionButton(){
+    const btn=document.getElementById('toggleCorrection');
+    btn.textContent = state.correction ? '補正ON' : '補正OFF';
+    btn.classList.toggle('active', !!state.correction);
+  }
+  function renderFloors(){
+    const el=document.getElementById('floorTabs'); if(!el) return; el.innerHTML='';
+    Object.keys(state.floors).forEach(name=>{
+      const b=document.createElement('button'); b.type='button'; b.textContent=name; b.className = name===state.activeFloor ? 'active' : '';
+      b.addEventListener('click',()=>{ state.activeFloor=name; selectedRoomId=null; document.getElementById('floorChip').textContent=name; renderFloors(); save(); render(); });
+      el.appendChild(b);
+    });
+    document.getElementById('floorChip').textContent=state.activeFloor;
+  }
+  function magnetSnap(room){
+    const threshold=34; const rb=bbox(room.points); let best=null;
+    floor().rooms.forEach(other=>{
+      if(other.id===room.id) return; const ob=bbox(other.points);
+      const overlapsY = rb.maxY > ob.minY-threshold && rb.minY < ob.maxY+threshold;
+      const overlapsX = rb.maxX > ob.minX-threshold && rb.minX < ob.maxX+threshold;
+      const candidates=[];
+      if(overlapsY){ candidates.push({dx:ob.minX-rb.maxX,dy:0,d:Math.abs(ob.minX-rb.maxX)}); candidates.push({dx:ob.maxX-rb.minX,dy:0,d:Math.abs(ob.maxX-rb.minX)}); }
+      if(overlapsX){ candidates.push({dx:0,dy:ob.minY-rb.maxY,d:Math.abs(ob.minY-rb.maxY)}); candidates.push({dx:0,dy:ob.maxY-rb.minY,d:Math.abs(ob.maxY-rb.minY)}); }
+      candidates.forEach(c=>{ if(c.d<threshold && (!best || c.d<best.d)) best=c; });
+    });
+    if(best){ moveRoom(room,best.dx,best.dy); modeChip.textContent='マグネット吸着しました'; setTimeout(()=>setMode(mode),900); }
+  }
+  document.getElementById('toggleCorrection').addEventListener('click',()=>{ state.correction=!state.correction; updateCorrectionButton(); save(); });
+  document.getElementById('addFloorBtn').addEventListener('click',()=>{ const name=prompt('階・ページ名を入力（例：3F、外構、詳細）','3F'); if(!name) return; if(!state.floors[name]) state.floors[name]={strokes:[],rooms:[],dims:[]}; state.activeFloor=name; renderFloors(); save(); render(); });
+
   load();
 })();
 </script>
